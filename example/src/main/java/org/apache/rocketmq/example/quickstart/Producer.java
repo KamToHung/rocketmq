@@ -50,15 +50,16 @@ public class Producer {
          */
         producer.start();
 
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < 1; i++) {
             try {
 
                 /*
                  * Create a message instance, specifying topic, tag and message body.
                  */
+                byte[] bytes = ("Hello RocketMQ " + i).getBytes(RemotingHelper.DEFAULT_CHARSET);
                 Message msg = new Message("TopicTest" /* Topic */,
                     "TagA" /* Tag */,
-                    ("Hello RocketMQ " + i).getBytes(RemotingHelper.DEFAULT_CHARSET) /* Message body */
+                        bytes /* Message body */
                 );
 
                 /*
@@ -100,6 +101,7 @@ public class Producer {
                  */
 
                 System.out.printf("%s%n", sendResult);
+                System.out.printf("数据大小:%d%n", bytes.length);
             } catch (Exception e) {
                 e.printStackTrace();
                 Thread.sleep(1000);

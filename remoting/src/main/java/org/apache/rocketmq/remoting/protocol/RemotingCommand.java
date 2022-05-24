@@ -438,6 +438,7 @@ public class RemotingCommand {
     public boolean isOnewayRPC() {
         int bits = 1 << RPC_ONEWAY;
         return (this.flag & bits) == bits;
+
     }
 
     public int getCode() {
