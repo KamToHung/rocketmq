@@ -69,6 +69,26 @@ import org.apache.rocketmq.store.PutMessageResult;
 import org.apache.rocketmq.store.config.BrokerRole;
 import org.apache.rocketmq.store.stats.BrokerStatsManager;
 
+/**
+ * Broker 处理 Consumer 拉取清求的入口类
+ * <p>
+ *
+ * RemotingCommand processRequest(ChannelHandlerContext ctx, RemotingCommand request)：处理 Consumer 拉取请求的入口方法，收到 Consumer 拉取请求时调用。该方法主要完成如下操作
+ * <p>
+ * 校验
+ * 消息过滤
+ * 从存储中查询消息
+ * 返回响应给 Consumer
+ * <p>
+ * 如果从存储中没有查询到消息，会将响应码设置为 ResponseCode.PULL_NOT_FOUND，并且启动长轮询
+ * <p>
+ *
+ * void executeRequestWhenWakeup(Channel channel, final RemotingCommand request)：将 Hold 的拉取请求唤醒，再次拉取消息
+ * <p>
+ * 该方法在长轮询收到新消息时调用，立即唤醒挂起的拉取请求，然后对这些请求调用 processRequest 方法
+ * 何时需要提醒长轮询新消息已经到达？上面说到，在长轮询等待时如果有新消息到达，CommitLog 的 doReput 方法中会进行提醒，最终会调用 executeRequestWhenWakeup 方法
+ *
+ */
 public class PullMessageProcessor extends AsyncNettyRequestProcessor implements NettyRequestProcessor {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.BROKER_LOGGER_NAME);
     private final BrokerController brokerController;
@@ -78,6 +98,8 @@ public class PullMessageProcessor extends AsyncNettyRequestProcessor implements 
         this.brokerController = brokerController;
     }
 
+
+    // 当 Broker 收到 Consumer 发送的拉取请求时，调用该processRequest 方法
     @Override
     public RemotingCommand processRequest(final ChannelHandlerContext ctx,
         RemotingCommand request) throws RemotingCommandException {

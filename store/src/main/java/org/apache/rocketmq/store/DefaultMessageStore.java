@@ -1991,6 +1991,9 @@ public class DefaultMessageStore implements MessageStore {
         }
     }
 
+    // 该线程负责将存储到 CommitLog 的消息重新转发，用以生成 ConsumeQueue 和 IndexFile 索引。在生成索引之后，会向长轮询线程发送提醒，立刻唤醒相应队列的拉取请求，执行消息拉取。
+    // 该服务线程 doReput() 方法会在 Broker 端不断地从数据存储对象 CommitLog 中解析数据并分发请求，随后构建出 ConsumeQueue（逻辑消费队列）和 IndexFile（消息索引文件）两种类型的数据。
+    // 同时从本地缓存变量 PullRequestHoldService#pullRequestTable 中，取出挂起的拉起请求并执行。
     class ReputMessageService extends ServiceThread {
 
         private volatile long reputFromOffset = 0;

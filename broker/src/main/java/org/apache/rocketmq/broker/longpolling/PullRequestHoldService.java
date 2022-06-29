@@ -29,18 +29,25 @@ import org.apache.rocketmq.logging.InternalLogger;
 import org.apache.rocketmq.logging.InternalLoggerFactory;
 import org.apache.rocketmq.store.ConsumeQueueExt;
 
+// 长轮询请求管理线程，挂起的拉取请求会在这里进行保存。每等待一段时间（长轮询/短轮询等待时间）会检查挂起的请求中是否有可以进行拉取的数据。
+
+/**
+ *该服务线程会从 pullRequestTable 本地缓存变量中取PullRequest请求，检查轮询条件“待拉取消息的偏移量是否小于消费队列最大偏移量”是否成立，如果条件成立则说明有新消息达到Broker端，则通过PullMessageProcessor的executeRequestWhenWakeup()方法重新尝试发起Pull消息的RPC请求
+ *
+ */
 public class PullRequestHoldService extends ServiceThread {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.BROKER_LOGGER_NAME);
     protected static final String TOPIC_QUEUEID_SEPARATOR = "@";
     protected final BrokerController brokerController;
     private final SystemClock systemClock = new SystemClock();
-    protected ConcurrentMap<String/* topic@queueId */, ManyPullRequest> pullRequestTable =
+    protected ConcurrentMap<String/* topic@queueId */, ManyPullRequest /* 同一队列积累的拉取请求 */> pullRequestTable =
         new ConcurrentHashMap<String, ManyPullRequest>(1024);
 
     public PullRequestHoldService(final BrokerController brokerController) {
         this.brokerController = brokerController;
     }
 
+    // 挂起pull请求，等待一段时间再观察是否有可拉取的数据
     public void suspendPullRequest(final String topic, final int queueId, final PullRequest pullRequest) {
         String key = this.buildKey(topic, queueId);
         ManyPullRequest mpr = this.pullRequestTable.get(key);
